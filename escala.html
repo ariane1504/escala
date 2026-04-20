@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Escala Profissional</title>
+
+<style>
+body {
+    font-family: Arial;
+    background: #eef2f7;
+    padding: 20px;
+}
+
+.container {
+    max-width: 900px;
+    margin: auto;
+}
+
+.card {
+    background: white;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 12px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+}
+
+input, textarea, button {
+    padding: 10px;
+    width: 100%;
+    margin: 5px 0;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+button {
+    background: #4CAF50;
+    color: white;
+    cursor: pointer;
+}
+
+.item {
+    padding: 10px;
+    background: #e8f5e9;
+    border-radius: 6px;
+    margin-bottom: 5px;
+}
+
+.hidden { display: none; }
+
+.topo {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.progresso {
+    height: 10px;
+    background: #ddd;
+    border-radius: 5px;
+}
+
+.barra {
+    height: 10px;
+    background: #4CAF50;
+    border-radius: 5px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div id="login" class="card">
+    <h2>🔐 Login</h2>
+    <input type="text" id="usuario" placeholder="Usuário">
+    <input type="password" id="senha" placeholder="Senha">
+    <button onclick="entrar()">Entrar</button>
+</div>
+
+<div id="conteudo" class="hidden">
+
+    <div class="card topo">
+        <h2 id="bemvindo"></h2>
+        <button onclick="sair()">Sair</button>
+    </div>
+
+    <!-- USUÁRIO -->
+    <div id="usuarioArea">
+        <div class="card">
+            <h3>📋 Suas tarefas</h3>
+            <div id="lista"></div>
+
+            <p id="porcentagem"></p>
+            <div class="progresso"><div id="barra" class="barra"></div></div>
+        </div>
+
+        <div class="card">
+            <h3>📝 Anotações</h3>
+            <textarea id="anotacao" rows="4" placeholder="Escreva algo..."></textarea>
+            <button onclick="salvarAnotacao()">Salvar anotação</button>
+        </div>
+    </div>
+
+    <!-- ADMIN -->
+    <div id="adminArea" class="hidden">
+        <div class="card">
+            <h3>📊 Painel Geral</h3>
+            <div id="painel"></div>
+        </div>
+    </div>
+
+</div>
+
+</div>
+
+<script>
+
+// USUÁRIOS
+const usuarios = {
+    admin: { senha: "admin123", tipo: "admin" },
+    diandres: { senha: "123", tipo: "user" },
+    leidi: { senha: "123", tipo: "user" },
+    lenir: { senha: "123", tipo: "user" },
+    andreina: { senha: "123", tipo: "user" },
+    karla: { senha: "123", tipo: "user" }
+};
+
+// TAREFAS
+const tarefas = {
+    diandres: [
+        "Limpeza da bancada",
+        "Limpeza do chão",
+        "Limpeza do balcão",
+        "Organizar e repor a mercearia",
+        "Limpeza da máquina de café"
+    ],
+    leidi: [
+        "Reposição dos frios",
+        "Limpeza do chão",
+        "Limpeza da chapa",
+        "Produtos"
+    ],
+    lenir: [
+        "Reposição e corte dos frios",
+        "Limpeza do chão",
+        "Reposição dos pães",
+        "Anotar sobras"
+    ],
+    andreina: [
+        "Limpeza da bancada",
+        "Limpeza do chão",
+        "Limpeza do balcão",
+        "Mesa dos pães",
+        "Verificar validade"
+    ],
+    karla: [
+        "Reposição dos pães",
+        "Organização dos cestinhos",
+        "Verificar validade",
+        "Mesa dos pães"
+    ]
+};
+
+let usuarioLogado = null;
+
+// LOGIN
+function entrar() {
+    const user = document.getElementById("usuario").value.toLowerCase();
+    const senha = document.getElementById("senha").value;
+
+    if (usuarios[user] && usuarios[user].senha === senha) {
+        usuarioLogado = user;
+
+        document.getElementById("login").classList.add("hidden");
+        document.getElementById("conteudo").classList.remove("hidden");
+        document.getElementById("bemvindo").innerText = "👋 " + user;
+
+        if (usuarios[user].tipo === "admin") {
+            document.getElementById("usuarioArea").classList.add("hidden");
+            document.getElementById("adminArea").classList.remove("hidden");
+            painelAdmin();
+        } else {
+            carregarTarefas();
+            carregarAnotacao();
+        }
+
+    } else {
+        alert("Login inválido!");
+    }
+}
+
+function sair() {
+    location.reload();
+}
+
+// TAREFAS
+function carregarTarefas() {
+    const lista = document.getElementById("lista");
+    lista.innerHTML = "";
+
+    let progresso = JSON.parse(localStorage.getItem(usuarioLogado)) || {};
+
+    tarefas[usuarioLogado].forEach((tarefa, i) => {
+        const checked = progresso[i] ? "checked" : "";
+
+        lista.innerHTML += `
+        <div class="item">
+            <input type="checkbox" ${checked} onchange="salvar(${i}, this.checked)">
+            ${tarefa}
+        </div>`;
+    });
+
+    atualizarProgresso();
+}
+
+function salvar(i, status) {
+    let progresso = JSON.parse(localStorage.getItem(usuarioLogado)) || {};
+    progresso[i] = status;
+    localStorage.setItem(usuarioLogado, JSON.stringify(progresso));
+    atualizarProgresso();
+}
+
+function atualizarProgresso() {
+    let progresso = JSON.parse(localStorage.getItem(usuarioLogado)) || {};
+    let total = tarefas[usuarioLogado].length;
+    let feitas = Object.values(progresso).filter(v => v).length;
+    let p = Math.round((feitas / total) * 100);
+
+    document.getElementById("porcentagem").innerText = p + "% concluído";
+    document.getElementById("barra").style.width = p + "%";
+}
+
+// ANOTAÇÕES
+function salvarAnotacao() {
+    const texto = document.getElementById("anotacao").value;
+    localStorage.setItem("anotacao_" + usuarioLogado, texto);
+    alert("Anotação salva!");
+}
+
+function carregarAnotacao() {
+    const texto = localStorage.getItem("anotacao_" + usuarioLogado);
+    document.getElementById("anotacao").value = texto || "";
+}
+
+// ADMIN
+function painelAdmin() {
+    const painel = document.getElementById("painel");
+    painel.innerHTML = "";
+
+    for (let user in tarefas) {
+        let progresso = JSON.parse(localStorage.getItem(user)) || {};
+        let total = tarefas[user].length;
+        let feitas = Object.values(progresso).filter(v => v).length;
+        let p = Math.round((feitas / total) * 100);
+        let anot = localStorage.getItem("anotacao_" + user) || "Sem anotação";
+
+        painel.innerHTML += `
+        <div class="card">
+            <strong>${user}</strong> - ${p}%
+            <div class="progresso"><div class="barra" style="width:${p}%"></div></div>
+            <p><b>Anotação:</b> ${anot}</p>
+        </div>`;
+    }
+}
+</script>
+
+</body>
+</html>
